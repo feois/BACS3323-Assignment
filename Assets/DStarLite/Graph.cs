@@ -2,6 +2,7 @@ using System;
 using static System.Single;
 using static System.Math;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using UnityEngine;
 
@@ -28,6 +29,9 @@ namespace DStarLite {
 		
 		internal float offset;
 		private bool updated;
+
+		private readonly List<Node> history = new();
+		public ReadOnlyCollection<Node> History() => history.AsReadOnly();
 
 		public bool searching { get; private set; }
 		public Node startNode { get; private set; }
@@ -192,8 +196,23 @@ namespace DStarLite {
 
 		public bool Next(out Node node) {
 			if (!Peek(out node)) return false;
+			history.Add(currentNode);
 			currentNode = node;
 			return true;
+		}
+
+		public bool Undo(bool ignoreObstacle) {
+			if (history.Count > 0) {
+				var last = history[^1];
+
+				if (ignoreObstacle || !IsObstacle(last)) {
+					currentNode = last;
+					history.RemoveAt(history.Count - 1);
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		// is not necessary but can improve performance by skipping unnecessary operations
