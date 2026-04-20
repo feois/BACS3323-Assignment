@@ -154,7 +154,7 @@ Total time: {totalTime * 1000:F2} µs ({totalTime:F2} ms)";
 
     void StartSearch() {
         npcGraph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
-        foreach (var (x, y) in obstacles) npcGraph.SetObstacle(new Vector3Int(x, 0, y));
+        if (!vision) foreach (var (x, y) in obstacles) npcGraph.SetObstacle(new Vector3Int(x, 0, y));
         npcGraph.SetAStarMode(astar);
         Stopwatch watch = new();
         watch.Start();
