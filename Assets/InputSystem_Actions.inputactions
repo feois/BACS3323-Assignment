@@ -68,6 +68,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Toggle AStar",
+                    "type": "Button",
+                    "id": "30eea9a6-23cf-4346-ada0-fe8bd2a5f0d4",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -145,6 +154,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Set Obstacle",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "03044ebc-fbf4-4d25-ab0e-c4f7f4341b73",
+                    "path": "<Keyboard>/a",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Toggle AStar",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

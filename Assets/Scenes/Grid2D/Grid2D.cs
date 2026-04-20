@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using DStarLite;
 using TMPro;
@@ -13,20 +14,21 @@ public class Grid2D : MonoBehaviour {
     public GameObject tilePrefab;
     public Transform goalTile;
     public Animator npc;
-    public TextMeshProUGUI status, visionText, diagonalText;
+    public TextMeshProUGUI status, visionText, diagonalText, timeText, astarText;
     
     public Vector2GridGraph graph { get; private set; }
     public Vector2GridGraph npcGraph { get; private set; }
     public Grid2DTile selectedTile { get; set; }
     public bool vision { get; private set; }
-    private bool diagonal;
+    private bool diagonal, astar;
     public readonly HashSet<(int, int)> obstacles = new();
     public readonly HashSet<(int, int)> seen = new();
     
     private Vector3 target;
     private bool blocked;
+    private double totalTime;
     
-    private InputAction goalAction, npcAction, searchAction, visionAction, diagonalAction;
+    private InputAction goalAction, npcAction, searchAction, visionAction, diagonalAction, astarAction;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -36,6 +38,7 @@ public class Grid2D : MonoBehaviour {
         searchAction = InputSystem.actions["Search"];
         visionAction = InputSystem.actions["Toggle Vision"];
         diagonalAction = InputSystem.actions["Toggle Diagonal"];
+        astarAction = InputSystem.actions["Toggle AStar"];
         
         graph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
         
@@ -83,6 +86,11 @@ public class Grid2D : MonoBehaviour {
             diagonalText.text = $"Diagonal [D]: {(diagonal ? "On" : "Off")}";
         }
 
+        if (astarAction.triggered && npcGraph == null) {
+            astar = !astar;
+            astarText.text = $"Use A* [A]: {(astar ? "On" : "Off")}";
+        }
+
         if (npcGraph != null) {
             if (!blocked && npcGraph.IsObstacle(npcGraph.currentNode)) {
                 blocked = true;
@@ -106,19 +114,30 @@ public class Grid2D : MonoBehaviour {
                     }
                 }
 
+                Stopwatch watch = new();
+                
+                watch.Start();
+
                 if (npcGraph.NextPosition(out target)) {
+                    watch.Stop();
                     status.text =
-                        $@"
-                        Start: {npcGraph.startNode.x} {npcGraph.startNode.z}
-                        Goal: {npcGraph.goalNode.x} {npcGraph.goalNode.z}
-                        Current: {npcGraph.History().Last().x} {npcGraph.History().Last().z}
-                        Target: {npcGraph.currentNode.x} {npcGraph.currentNode.z}
-                        ";
+$@"Start: {npcGraph.startNode.x} {npcGraph.startNode.z}
+Goal: {npcGraph.goalNode.x} {npcGraph.goalNode.z}
+Current: {npcGraph.History().Last().x} {npcGraph.History().Last().z}
+Target: {npcGraph.currentNode.x} {npcGraph.currentNode.z}";
                 }
                 else {
                     status.text = "No path";
                     StopSearch();
                 }
+
+                var time = watch.Elapsed.TotalMilliseconds;
+
+                totalTime += time;
+
+                timeText.text =
+$@"Time taken: {time * 1000:F2} µs ({time:F2} ms)
+Total time: {totalTime * 1000:F2} µs ({totalTime:F2} ms)";
                 
                 npc.SetBool("walking", false);
             }
@@ -133,10 +152,16 @@ public class Grid2D : MonoBehaviour {
     void StartSearch() {
         npcGraph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
         foreach (var (x, y) in obstacles) npcGraph.SetObstacle(new Vector3Int(x, 0, y));
+        npcGraph.SetAStarMode(astar);
+        Stopwatch watch = new();
+        watch.Start();
         npcGraph.SearchPathPosition(npc.transform.position, goalTile.position);
+        watch.Stop();
+        totalTime += watch.Elapsed.TotalMilliseconds;
         blocked = false;
         npc.transform.position = target = npcGraph.ToPosition(npcGraph.currentNode);
         seen.Clear();
+        totalTime = 0;
     }
 
     void StopSearch() {

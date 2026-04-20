@@ -26,6 +26,7 @@ namespace DStarLite {
 		
 		private readonly RemovablePriorityQueue<Node, NodeKey> openList = new();
 		public bool obstacleEnabled { get; private set; } = true;
+		public bool astar { get; private set; }
 		
 		internal float offset;
 		private bool updated;
@@ -38,6 +39,12 @@ namespace DStarLite {
 		public Node currentNode { get; private set;  }
 		public Node goalNode { get; private set; }
 		private Node offsetNode;
+
+		private List<Node> astarPath = new();
+
+		public void SetAStarMode(bool mode) {
+			if (!searching) astar = mode;
+		}
 		
 		// can be overriden for optimization, must set all nodes' cost and lookahead to infinity 
 		protected virtual void Reset() {
@@ -136,6 +143,45 @@ namespace DStarLite {
 		}
 		
 		private void CalculatePath() {
+			if (astar) {
+				Dictionary<Node, float> g = new();
+				Dictionary<Node, Node> p = new();
+				HashSet<Node> v = new();
+				RemovablePriorityQueue<Node, float> q = new();
+
+				astarPath.Clear();
+				q.Enqueue(currentNode, Heuristic(currentNode, goalNode));
+				g[currentNode] = 0;
+
+				while (q.TryDequeue(out var n, out _)) {
+					if (n.Equals(goalNode)) {
+						while (p.TryGetValue(n, out var node)) {
+							astarPath.Add(n);
+							n = node;
+						}
+						astarPath.Reverse();
+						return;
+					}
+
+					v.Add(n);
+					
+					foreach (var (node, c) in SuccessorsWithCost(n)) {
+						if (IsObstacle(node) || v.Contains(node)) continue;
+
+						var ng = g[n] + c;
+
+						if (g.TryGetValue(node, out var og) && ng >= og) continue;
+						
+						p[node] = n;
+						g[node] = ng;
+						q.Remove(node);
+						q.Enqueue(node, ng + Heuristic(node, goalNode));
+					}
+				}
+				
+				return;
+			}
+			
 			while (openList.TryPeek(out var node, out var key) && (key < Key(currentNode) || !Lookahead(currentNode).Equals(Cost(currentNode)))) {
 				if (key < Key(node)) openList.Enqueue(node, Key(node)); // stale key
 				else if (Cost(node) > Lookahead(node)) {
@@ -158,31 +204,42 @@ namespace DStarLite {
 			}
 		}
 
-		public void RecalculatePath() => CalculatePath();
+		public void RecalculatePath() {
+			if (updated) {
+				updated = false;
+				CalculatePath();
+			}
+		}
 		
 		public void SearchPath(Node start, Node goal) {
 			searching = true;
 			updated = false;
 			startNode = currentNode = offsetNode = start;
 			goalNode = goal;
-			
-			Reset();
-			SetLookahead(goal, 0);
-			
-			offset = 0;
-			openList.Clear();
-			openList.Enqueue(goal, Key(goal));
+
+			if (!astar) {
+				Reset();
+				SetLookahead(goal, 0);
+
+				offset = 0;
+				openList.Clear();
+				openList.Enqueue(goal, Key(goal));
+			}
+
 			CalculatePath();
 		}
 
 		public bool Peek(out Node node) {
 			if (searching) {
-				if (updated) {
-					RecalculatePath();
-					updated = false;
-				}
+				RecalculatePath();
 
-				if (!(currentNode.Equals(goalNode) || IsPositiveInfinity(Cost(currentNode)))) {
+				if (astar) {
+					if (astarPath.Count > 0) {
+						node = astarPath[0];
+						return true;
+					}
+				}
+				else if (!(currentNode.Equals(goalNode) || IsPositiveInfinity(Cost(currentNode)))) {
 					(node, _) = MinSuccessorWithLookahead(currentNode);
 					return true;
 				}
@@ -198,6 +255,7 @@ namespace DStarLite {
 			if (!Peek(out node)) return false;
 			history.Add(currentNode);
 			currentNode = node;
+			if (astar) astarPath.RemoveAt(0);
 			return true;
 		}
 
