@@ -46,17 +46,14 @@ public class Grid2DTile : MonoBehaviour {
         }
 
         obstacle.SetActive(grid.graph.IsObstacle(index));
+        visionMask.SetActive(grid.searching && grid.vision && !grid.seen.Contains((index.x, index.y)));
 
-        if (grid.npcGraph != null) {
-            var cost = grid.npcGraph.Cost(index);
+        if (grid.searching && !grid.astar) {
+            var cost = grid.npcGraph!.Cost(index);
             var lookahead = grid.npcGraph.Lookahead(index);
             
             text.text = $"{(IsPositiveInfinity(cost) ? "∞" : $"{cost:F2}")}\n{(IsPositiveInfinity(lookahead) ? "∞" : $"{lookahead:F2}")}";
-            visionMask.SetActive(grid.vision && !grid.seen.Contains((index.x, index.y)));
         }
-        else {
-            text.text = "";
-            visionMask.SetActive(false);
-        }
+        else text.text = "";
     }
 }

@@ -20,9 +20,12 @@ public class Grid2D : MonoBehaviour {
     public Vector2GridGraph npcGraph { get; private set; }
     public Grid2DTile selectedTile { get; set; }
     public bool vision { get; private set; }
-    private bool diagonal, astar;
+    public bool astar { get; private set; }
+    private bool diagonal;
     public readonly HashSet<(int, int)> obstacles = new();
     public readonly HashSet<(int, int)> seen = new();
+
+    public bool searching => npcGraph != null;
     
     private Vector3 target;
     private bool blocked;
@@ -67,31 +70,31 @@ public class Grid2D : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
-        if (goalAction.triggered && selectedTile && npcGraph == null) goalTile.position = selectedTile.transform.position;
+        if (goalAction.triggered && selectedTile && !searching) goalTile.position = selectedTile.transform.position;
 
-        if (npcAction.triggered && selectedTile && npcGraph == null) npc.transform.position = selectedTile.transform.position;
+        if (npcAction.triggered && selectedTile && !searching) npc.transform.position = selectedTile.transform.position;
 
         if (searchAction.triggered) {
-            if (npcGraph == null) StartSearch();
+            if (!searching) StartSearch();
             else StopSearch();
         }
 
-        if (visionAction.triggered && npcGraph == null) {
+        if (visionAction.triggered && !searching) {
             vision = !vision;
             visionText.text = $"Vision [V]: {(vision ? "On" : "Off")}";
         }
 
-        if (diagonalAction.triggered && npcGraph == null) {
+        if (diagonalAction.triggered && !searching) {
             diagonal = !diagonal;
             diagonalText.text = $"Diagonal [D]: {(diagonal ? "On" : "Off")}";
         }
 
-        if (astarAction.triggered && npcGraph == null) {
+        if (astarAction.triggered && !searching) {
             astar = !astar;
             astarText.text = $"Use A* [A]: {(astar ? "On" : "Off")}";
         }
 
-        if (npcGraph != null) {
+        if (searching) {
             if (!blocked && npcGraph.IsObstacle(npcGraph.currentNode)) {
                 blocked = true;
                 npcGraph.Undo(true);
@@ -165,7 +168,7 @@ Total time: {totalTime * 1000:F2} µs ({totalTime:F2} ms)";
     }
 
     void StopSearch() {
-        if (npcGraph != null) {
+        if (searching) {
             npc.transform.position = npcGraph.ToPosition(npcGraph.currentNode);
             npcGraph.EndSearch();
             seen.Clear();
