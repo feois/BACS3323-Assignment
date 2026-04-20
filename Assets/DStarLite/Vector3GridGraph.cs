@@ -1,7 +1,6 @@
 using System;
 using static System.Single;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -10,7 +9,7 @@ namespace DStarLite {
     public class Vector3GridGraph : Graph<Vector3Int> {
         public readonly Vector3Int size;
         public readonly Vector3 origin, step;
-        public readonly bool diagonal;
+        public bool diagonal { get; private set; }
         private readonly float[,,] costs, lookaheads;
         private readonly bool[,,] obstacles;
 
@@ -27,6 +26,10 @@ namespace DStarLite {
             costs = new float[size.x, size.y, size.z];
             lookaheads = new float[size.x, size.y, size.z];
             obstacles = new bool[size.x, size.y, size.z];
+        }
+        
+        public void SetDiagonal(bool mode) {
+            if (!searching) diagonal = mode;
         }
 
         public Vector3Int? ToIndex(Vector3 position) {
