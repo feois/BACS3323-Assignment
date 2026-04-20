@@ -3,7 +3,6 @@ using System.Linq;
 using DStarLite;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
 public class Grid2D : MonoBehaviour {
@@ -14,14 +13,14 @@ public class Grid2D : MonoBehaviour {
     
     public GameObject tilePrefab;
     public Transform goalTile;
-    public Transform npc;
+    public Animator npc;
     public TextMeshProUGUI status;
     
     public Vector2GridGraph graph { get; private set; }
     public Vector2GridGraph npcGraph { get; private set; }
     public Grid2DTile selectedTile;
     public bool vision;
-    public HashSet<(int, int)> seen = new();
+    public readonly HashSet<(int, int)> seen = new();
     
     private Vector3 target;
     private bool blocked;
@@ -65,7 +64,7 @@ public class Grid2D : MonoBehaviour {
     {
         if (setGoalAction.triggered && selectedTile && npcGraph == null) goalTile.position = selectedTile.transform.position;
 
-        if (teleportNpcAction.triggered && selectedTile && npcGraph == null) npc.position = selectedTile.transform.position;
+        if (teleportNpcAction.triggered && selectedTile && npcGraph == null) npc.transform.position = selectedTile.transform.position;
 
         if (searchAction.triggered) {
             if (npcGraph == null) StartSearch();
@@ -81,7 +80,7 @@ public class Grid2D : MonoBehaviour {
                 target = npcGraph.ToPosition(npcGraph.currentNode);
             }
             
-            if (Mathf.Approximately(Vector3.Distance(npc.position, target), 0)) {
+            if (Mathf.Approximately(Vector3.Distance(npc.transform.position, target), 0)) {
                 blocked = false;
 
                 if (vision) {
@@ -110,23 +109,29 @@ public class Grid2D : MonoBehaviour {
                     status.text = "No path";
                     StopSearch();
                 }
+                
+                npc.SetBool("walking", false);
             }
-            else npc.position = Vector3.MoveTowards(npc.position, target, Time.deltaTime * speed);
+            else {
+                npc.transform.LookAt(target);
+                npc.transform.position = Vector3.MoveTowards(npc.transform.position, target, Time.deltaTime * speed);
+                npc.SetBool("walking", true);
+            }
         }
     }
 
     void StartSearch() {
         if (vision) npcGraph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
         else npcGraph = graph;
-        npcGraph.SearchPathPosition(npc.position, goalTile.position);
+        npcGraph.SearchPathPosition(npc.transform.position, goalTile.position);
         blocked = false;
-        npc.position = target = npcGraph.ToPosition(npcGraph.currentNode);
+        npc.transform.position = target = npcGraph.ToPosition(npcGraph.currentNode);
         seen.Clear();
     }
 
     void StopSearch() {
         if (npcGraph != null) {
-            npc.position = npcGraph.ToPosition(npcGraph.currentNode);
+            npc.transform.position = npcGraph.ToPosition(npcGraph.currentNode);
             npcGraph.EndSearch();
             seen.Clear();
             npcGraph = null;
