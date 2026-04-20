@@ -31,7 +31,7 @@ namespace DStarLite {
         public void SetDiagonal(bool mode) {
             if (!searching) diagonal = mode;
         }
-
+        
         public Vector3Int? ToIndex(Vector3 position) {
             position -= origin;
 
