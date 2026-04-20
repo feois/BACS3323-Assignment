@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 public class Grid2DTile : MonoBehaviour {
     private InputAction pointAction;
-    private InputAction clickAction;
+    private InputAction obstacleAction;
 
     public MeshRenderer cube;
     public GameObject obstacle;
@@ -21,7 +21,7 @@ public class Grid2DTile : MonoBehaviour {
     void Start()
     {
         pointAction = InputSystem.actions.FindAction("Point");
-        clickAction = InputSystem.actions.FindAction("Attack");
+        obstacleAction = InputSystem.actions.FindAction("Set Obstacle");
     }
 
     // Update is called once per frame
@@ -33,8 +33,11 @@ public class Grid2DTile : MonoBehaviour {
             cube.material = selectedMaterial;
             grid.selectedTile = this;
 
-            if (clickAction.triggered) {
+            if (obstacleAction.triggered) {
+                if (grid.graph.IsObstacle(index)) grid.obstacles.Remove((index.x, index.y));
+                else grid.obstacles.Add((index.x, index.y));
                 grid.graph.ToggleObstacle(index);
+                grid.npcGraph?.ToggleObstacle(index);
                 grid.seen.Remove((index.x, index.y));
             }
         }
@@ -47,11 +50,8 @@ public class Grid2DTile : MonoBehaviour {
         if (grid.npcGraph != null) {
             var cost = grid.npcGraph.Cost(index);
             var lookahead = grid.npcGraph.Lookahead(index);
-            var costString = IsPositiveInfinity(cost) ? "∞" : $"{cost:F2}";
-            var lookaheadString = IsPositiveInfinity(lookahead) ? "∞" : $"{lookahead:F2}";
-
-            text.text = $"{costString}\n{lookaheadString}";
-
+            
+            text.text = $"{(IsPositiveInfinity(cost) ? "∞" : $"{cost:F2}")}\n{(IsPositiveInfinity(lookahead) ? "∞" : $"{lookahead:F2}")}";
             visionMask.SetActive(grid.vision && !grid.seen.Contains((index.x, index.y)));
         }
         else {

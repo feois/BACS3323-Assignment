@@ -8,32 +8,34 @@ using UnityEngine.InputSystem;
 public class Grid2D : MonoBehaviour {
     public Vector2 tileSize;
     public Vector2Int gridSize;
-    public bool diagonal;
     public float speed = 1;
     
     public GameObject tilePrefab;
     public Transform goalTile;
     public Animator npc;
-    public TextMeshProUGUI status;
+    public TextMeshProUGUI status, visionText, diagonalText;
     
     public Vector2GridGraph graph { get; private set; }
     public Vector2GridGraph npcGraph { get; private set; }
-    public Grid2DTile selectedTile;
-    public bool vision;
+    public Grid2DTile selectedTile { get; set; }
+    public bool vision { get; private set; }
+    private bool diagonal;
+    public readonly HashSet<(int, int)> obstacles = new();
     public readonly HashSet<(int, int)> seen = new();
     
     private Vector3 target;
     private bool blocked;
     
-    private InputAction setGoalAction, teleportNpcAction, searchAction, visionAction;
+    private InputAction goalAction, npcAction, searchAction, visionAction, diagonalAction;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        setGoalAction = InputSystem.actions["Set Goal"];
-        teleportNpcAction = InputSystem.actions["Teleport NPC"];
-        searchAction = InputSystem.actions["Jump"];
+        goalAction = InputSystem.actions["Set Goal"];
+        npcAction = InputSystem.actions["Teleport NPC"];
+        searchAction = InputSystem.actions["Search"];
         visionAction = InputSystem.actions["Toggle Vision"];
+        diagonalAction = InputSystem.actions["Toggle Diagonal"];
         
         graph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
         
@@ -62,16 +64,24 @@ public class Grid2D : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
-        if (setGoalAction.triggered && selectedTile && npcGraph == null) goalTile.position = selectedTile.transform.position;
+        if (goalAction.triggered && selectedTile && npcGraph == null) goalTile.position = selectedTile.transform.position;
 
-        if (teleportNpcAction.triggered && selectedTile && npcGraph == null) npc.transform.position = selectedTile.transform.position;
+        if (npcAction.triggered && selectedTile && npcGraph == null) npc.transform.position = selectedTile.transform.position;
 
         if (searchAction.triggered) {
             if (npcGraph == null) StartSearch();
             else StopSearch();
         }
 
-        if (visionAction.triggered && npcGraph == null) vision = !vision;
+        if (visionAction.triggered && npcGraph == null) {
+            vision = !vision;
+            visionText.text = $"Vision [V]: {(vision ? "On" : "Off")}";
+        }
+
+        if (diagonalAction.triggered && npcGraph == null) {
+            diagonal = !diagonal;
+            diagonalText.text = $"Diagonal [D]: {(diagonal ? "On" : "Off")}";
+        }
 
         if (npcGraph != null) {
             if (!blocked && npcGraph.IsObstacle(npcGraph.currentNode)) {
@@ -121,8 +131,8 @@ public class Grid2D : MonoBehaviour {
     }
 
     void StartSearch() {
-        if (vision) npcGraph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
-        else npcGraph = graph;
+        npcGraph = new Vector2GridGraph(transform.position, tileSize, gridSize, diagonal);
+        foreach (var (x, y) in obstacles) npcGraph.SetObstacle(new Vector3Int(x, 0, y));
         npcGraph.SearchPathPosition(npc.transform.position, goalTile.position);
         blocked = false;
         npc.transform.position = target = npcGraph.ToPosition(npcGraph.currentNode);
